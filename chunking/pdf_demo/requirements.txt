@@ -1,0 +1,6 @@
+pdftext
+img2table
+mdformat
+scikit-learn
+Pillow
+pymupdf4llm
