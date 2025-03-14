@@ -307,3 +307,12 @@ def parition_pdf(
             page["blocks"] = text_blocks + table_blocks
 
     return pages
+
+
+def pages_to_markdown(pages: list[dict[str, Any]]) -> list[str]:
+    """Convert a list of pages to Markdown."""
+    md_text = ""
+    for page in pages:
+        for block in page["blocks"]:
+            md_text += block["text"] + "\n\n"
+    return md_text

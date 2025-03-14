@@ -20,6 +20,26 @@ def detect_tables_single_page(img):
     return output
 
 
+def check_valid_table(table, col_thres=0.25):
+    # check if every column / row has more than `thres`
+    # number of cells has non-empty value
+    if not table:
+        return False
+
+    table_content = list(table.content.values())
+    col_count = len(table_content[0])
+    row_count = len(table_content)
+    col_fill_count_dict = {col: 0 for col in range(col_count)}
+
+    for row in table_content:
+        for cell_idx, cell in enumerate(row):
+            col_fill_count_dict[cell_idx] += 1 if cell.value else 0
+
+    return all(
+        [col_fill_count_dict[col] / row_count > col_thres for col in range(col_count)]
+    ) and (row_count > 2)
+
+
 def img2table_get_tables(path: str, executor: ProcessPoolExecutor):
     # Extract tables from document
     doc = PDF(path)
@@ -41,10 +61,10 @@ def img2table_get_tables(path: str, executor: ProcessPoolExecutor):
                 "text": table.html,
                 "title": table.title if table.title else "",
                 "bbox": [
-                    table.bbox.x1 / page_image_w,
-                    table.bbox.y1 / page_image_h,
-                    table.bbox.x2 / page_image_w,
-                    table.bbox.y2 / page_image_h,
+                    float(table.bbox.x1 / page_image_w),
+                    float(table.bbox.y1 / page_image_h),
+                    float(table.bbox.x2 / page_image_w),
+                    float(table.bbox.y2 / page_image_h),
                 ],
                 "type": "table",
                 "rows": [
@@ -61,5 +81,6 @@ def img2table_get_tables(path: str, executor: ProcessPoolExecutor):
                 ],
             }
             for table in page_tables
+            if check_valid_table(table)
         ]
     return output_tables
