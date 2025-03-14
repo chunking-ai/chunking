@@ -1,27 +1,28 @@
 from pathlib import Path
 
-from chunking.base import Chunk, Origin
+from chunking.base import Chunk
 from chunking.load.pdf import DoclingPDF, SycamorePDF, UnstructuredPDF
+from chunking.mime.pdf import MimeTypePDF
 
 pdf_path = str(Path(__file__).parent.parent / "assets" / "short.pdf")
 
 
 def test_sycamore():
-    original_chunk = Chunk(mimetype="file", origin=Origin(location=pdf_path))
-    chunks = SycamorePDF.run(original_chunk, use_ocr=False)
+    root = MimeTypePDF.as_root_chunk(pdf_path)
+    chunks = SycamorePDF.run(root, use_ocr=False)
     assert len(chunks) > 0
     assert isinstance(chunks[0], Chunk)
 
 
 def test_unstructured():
-    original_chunk = Chunk(mimetype="file", origin=Origin(location=pdf_path))
-    chunks = UnstructuredPDF.run(original_chunk)
+    root = MimeTypePDF.as_root_chunk(pdf_path)
+    chunks = UnstructuredPDF.run(root)
     assert len(chunks) > 0
     assert isinstance(chunks[0], Chunk)
 
 
 def test_docling():
-    original_chunk = Chunk(mimetype="file", origin=Origin(location=pdf_path))
-    chunks = DoclingPDF.run(original_chunk)
+    root = MimeTypePDF.as_root_chunk(pdf_path)
+    chunks = DoclingPDF.run(root)
     assert len(chunks) > 0
     assert isinstance(chunks[0], Chunk)
