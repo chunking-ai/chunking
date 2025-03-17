@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from chunking.base import Chunk
-from chunking.load.pdf import DoclingPDF, SycamorePDF, UnstructuredPDF
 from chunking.mime import mime_pdf
+from chunking.parse.pdf import DoclingPDF, SycamorePDF, UnstructuredPDF
 
 pdf_path = str(Path(__file__).parent.parent / "assets" / "short.pdf")
 
