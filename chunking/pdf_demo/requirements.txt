@@ -1,6 +1,4 @@
-pdftext
+git+https://github.com/chunking-ai/pdftext.git
 img2table
-mdformat
 scikit-learn
 Pillow
-pymupdf4llm

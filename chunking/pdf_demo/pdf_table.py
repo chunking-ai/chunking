@@ -11,8 +11,8 @@ def detect_tables_single_page(img):
     try:
         table_image = TableImage(img=img, min_confidence=MIN_CONFIDENCE)
         output = table_image.extract_tables(
-            implicit_rows=False,
             implicit_columns=False,
+            implicit_rows=True,
             borderless_tables=True,
         )
     except:  # noqa
@@ -20,7 +20,7 @@ def detect_tables_single_page(img):
     return output
 
 
-def check_valid_table(table, col_thres=0.25):
+def check_valid_table(table, col_thres=0.3):
     # check if every column / row has more than `thres`
     # number of cells has non-empty value
     if not table:
