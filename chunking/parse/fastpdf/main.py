@@ -1,6 +1,5 @@
 import time
 from concurrent.futures import ProcessPoolExecutor
-from pprint import pprint
 
 import pymupdf4llm
 from img2table.document import PDF
@@ -37,7 +36,10 @@ if __name__ == "__main__":
     executor.shutdown()
 
     # preview the results
-    pprint(pages)
+    import json
+
+    with open("output.json", "w") as f:
+        json.dump(pages, f, indent=4)
     plot_blocks(input_path, pages, debug_path)
 
     # start_time = time.time()

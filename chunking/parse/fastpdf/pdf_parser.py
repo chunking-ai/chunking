@@ -208,6 +208,7 @@ def parition_pdf(
                     )
                 ]
             page["blocks"] = text_blocks + table_blocks
+            page.pop("refs", None)
 
     return pages
 
