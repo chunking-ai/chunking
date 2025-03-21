@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from pdf_table import img2table_get_tables
 from pdftext.extraction import dictionary_output
+
+from .pdf_table import img2table_get_tables
 
 
 def scale_bbox(bbox: list[float], width: float, height: float) -> list[float]:
