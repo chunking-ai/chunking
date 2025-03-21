@@ -20,7 +20,7 @@ def plot_pdf(pdf_path: str, chunks: ChunkGroup, output_path: str):
 
     for idx, img in enumerate(doc.images):
         page_chunks: list[Chunk] = page_to_chunks[idx]
-        page_image_w, page_image_h = img.shape[:2]
+        page_image_h, page_image_w = img.shape[:2]
 
         for chunk_id, chunk in enumerate(page_chunks):
             chunk_type = chunk.metadata.get("label", "other")
@@ -29,7 +29,13 @@ def plot_pdf(pdf_path: str, chunks: ChunkGroup, output_path: str):
             y1 = y1 * page_image_h
             x2 = x2 * page_image_w
             y2 = y2 * page_image_h
-            cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 4)
+
+            if chunk_type == "text":
+                color = (0, 0, 255)
+            else:
+                color = (255, 0, 0)
+
+            cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), color, 4)
             cv2.putText(
                 img,
                 f"({chunk_id}) {chunk_type}",

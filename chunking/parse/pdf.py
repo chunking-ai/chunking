@@ -151,7 +151,11 @@ class FastPDF(BaseOperation):
 
     @classmethod
     def run(
-        cls, chunk: Chunk | ChunkGroup, extract_table: bool = True, **kwargs
+        cls,
+        chunk: Chunk | ChunkGroup,
+        extract_table: bool = True,
+        use_multiprocessing: bool = False,
+        **kwargs,
     ) -> ChunkGroup:
         """Load the PDF with a fast PDF parser.
 
@@ -162,7 +166,7 @@ class FastPDF(BaseOperation):
 
         from .fastpdf.pdf_parser import parition_pdf
 
-        executor = ProcessPoolExecutor()
+        executor = ProcessPoolExecutor() if use_multiprocessing else None
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
 
@@ -204,7 +208,7 @@ class FastPDF(BaseOperation):
                         origin=origin,
                         metadata=mime_pdf.ChildMetadata(
                             label=block["type"],
-                        ).as_dict(),
+                        ).asdict(),
                     )
                     r.history.append(
                         cls.name(
