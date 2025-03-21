@@ -180,7 +180,7 @@ class FastPDF(BaseOperation):
             )
 
             for page in pages:
-                page_label = page["page"]
+                page_label = page["page"] + 1
                 for block in page["blocks"]:
                     # only support text elements for now
                     # TODO: add support for other types (image)
