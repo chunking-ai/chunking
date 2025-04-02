@@ -1,122 +1,4 @@
-from typing import Callable
-
 from chunking.base import BaseOperation, Chunk, ChunkGroup
-
-from .utils import word_len
-
-_len_fns = {
-    "len": len,
-    "word_len": word_len,
-}
-
-
-def combine_lvl(heading_start_idx, heading_levels, min_size, length_fn, content):
-    """
-    Combine sections of the same consecutive level to be at least a given size.
-
-    Args:
-        heading_start_idx: List of character offsets of the headings
-        heading_levels: List of heading levels
-        min_size: Minimum section size
-        length_fn: Function to calculate the length of a section
-        content: The content string
-
-    Returns:
-        Tuple of (new_heading_start_idx, new_heading_levels)
-    """
-    if len(heading_start_idx) <= 1:
-        return heading_start_idx, heading_levels
-
-    # Create result arrays
-    result_idx = [heading_start_idx[0]]
-    result_levels = [heading_levels[0]]
-
-    # Process each heading
-    i = 1
-    while i < len(heading_start_idx):
-        current_idx = heading_start_idx[i]
-        current_level = heading_levels[i]
-        prev_idx = result_idx[-1]
-        prev_level = result_levels[-1]
-
-        # Calculate size of previous section
-        section_size = length_fn(content[prev_idx:current_idx])
-
-        # If the section is too small and both headings have the same level
-        if section_size < min_size and current_level == prev_level:
-            # Skip this heading (merge with previous section)
-            i += 1
-            continue
-
-        # Add this heading to the result
-        result_idx.append(current_idx)
-        result_levels.append(current_level)
-        i += 1
-
-    return result_idx, result_levels
-
-
-def collapse_lvl(heading_start_idx, heading_levels, min_size, length_fn, content):
-    """Collapse the section if the section only contains one child section, and if
-    either the section or the child section is smaller than the given size.
-    """
-    # Make copies of the input lists
-    new_idx = heading_start_idx.copy()
-    new_lvl = heading_levels.copy()
-
-    if len(new_idx) <= 1:
-        return new_idx, new_lvl
-
-    # Process headings from the end to avoid index shifting problems
-    i = len(new_idx) - 2  # Start from the second last element
-
-    while i >= 0:
-        current_level = new_lvl[i]
-
-        # Find direct children of this heading
-        direct_children, _clvl = [], -1
-        j = i + 1
-        while j < len(new_lvl) and new_lvl[j] > current_level:
-            if not direct_children or new_lvl[j] == _clvl:
-                direct_children.append(j)
-                _clvl = new_lvl[j]
-            j += 1
-
-        # If there are no child sections or more than one child section, skip
-        if len(direct_children) != 1:
-            i -= 1
-            continue
-
-        child_idx = direct_children[0]
-        child_level = new_lvl[child_idx]
-
-        # Calculate section sizes
-        # Parent section size is from its start to its child's start
-        parent_size = length_fn(content[new_idx[i] : new_idx[child_idx]])
-
-        # Child section size is from its start to the next heading's start
-        if child_idx + 1 < len(new_idx):
-            child_size = length_fn(content[new_idx[child_idx] : new_idx[child_idx + 1]])
-        else:
-            child_size = length_fn(content[new_idx[child_idx] :])
-
-        # Check if the child has its own children
-        has_grandchildren = False
-        if child_idx + 1 < len(new_lvl) and new_lvl[child_idx + 1] > child_level:
-            has_grandchildren = True
-
-        # Collapse if child has no children and either section is smaller than min_size
-        if not has_grandchildren and (parent_size < min_size or child_size < min_size):
-            # Remove the child heading
-            new_idx.pop(child_idx)
-            new_lvl.pop(child_idx)
-            # Start over since indices have changed
-            i = len(new_idx) - 2
-            continue
-
-        i -= 1
-
-    return new_idx, new_lvl
 
 
 def map_bytestring_index_to_string_index(byte_string, byte_indices):
@@ -142,18 +24,15 @@ def map_bytestring_index_to_string_index(byte_string, byte_indices):
     return byte_to_char_map
 
 
-class MarkdownSplitByHeading(BaseOperation):
-    _len_fns = {
-        "len": len,
-        "word_len": word_len,
-    }
+def parse_tree_sitter_node(node):
+    ...
 
+
+class Markdown(BaseOperation):
     @classmethod
     def run(
         cls,
         chunk: Chunk | ChunkGroup,
-        min_chunk_size: int = -1,
-        length_fn: Callable[[str], int] | None | str = "word_len",
         **kwargs,
     ) -> ChunkGroup:
         """Split large chunks of text into smaller chunks based on Markdown heading,
@@ -172,22 +51,13 @@ class MarkdownSplitByHeading(BaseOperation):
             chunk = ChunkGroup(chunks=[chunk])
 
         # Resolve length function
-        if isinstance(length_fn, str):
-            ln = _len_fns[length_fn]
-        elif length_fn is None:
-            ln = word_len
-        else:
-            ln = length_fn
-
         parser = Parser(Language(tree_sitter_markdown.language()))
 
         output = ChunkGroup()
         for mc in chunk:
             ct = mc.content
             ctb = ct.encode("utf-8")
-            if not isinstance(ct, str) or (
-                min_chunk_size != -1 and ln(ct) < min_chunk_size
-            ):
+            if not isinstance(ct, str):
                 output.add_group(ChunkGroup(root=mc))
                 continue
 
@@ -195,9 +65,9 @@ class MarkdownSplitByHeading(BaseOperation):
             ts_root = tree.root_node
 
             # Get chunk header range
-            stack, h_start, h_end, level = [(ts_root, 0)], [], {}, []
+            stack, h_start, h_end, level = [ts_root], [], {}, []
             while stack:
-                ts_node, current_level = stack.pop()
+                ts_node = stack.pop()
                 if "heading" in ts_node.type:
                     lvl = None
                     for child in ts_node.children:
@@ -225,11 +95,9 @@ class MarkdownSplitByHeading(BaseOperation):
                     h_end[ts_node.start_byte] = ts_node.end_byte
                     level.append(lvl)
 
-                if len(ts_node.type) > 1:
-                    print("  " * current_level, ts_node.type, ts_node.start_byte, ts_node.end_byte)
                 for i in range(ts_node.child_count - 1, -1, -1):
                     if child := ts_node.children[i]:
-                        stack.append((child, current_level + 1))
+                        stack.append(child)
 
             if len(h_start) < 2:
                 # 1 or 0 heading, so nothing to split
@@ -245,15 +113,6 @@ class MarkdownSplitByHeading(BaseOperation):
                 byte_to_char_map[idx]: byte_to_char_map[end]
                 for idx, end in h_end.items()
             }
-
-            # Combine small chunks to larger chunk
-            if min_chunk_size != -1:
-                while True:
-                    new_h, new_l = collapse_lvl(h_start, level, min_chunk_size, ln, ct)
-                    new_h, new_l = combine_lvl(new_h, new_l, min_chunk_size, ln, ct)
-                    if len(new_h) == len(h_start):
-                        break
-                    h_start, level = new_h, new_l
 
             # Build the chunks
             result = []
@@ -315,25 +174,3 @@ class MarkdownSplitByHeading(BaseOperation):
     def py_dependency(cls) -> list[str]:
         return ["tree-sitter", "tree-sitter-markdown"]
 
-
-class MarkdownTOC(BaseOperation):
-    @classmethod
-    def run(cls, chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
-        """Chunk the markdown text by the headings. Construct the TOC along the way.
-
-        The chunking is done by splitting the text at the headings, ensure that each
-        of the chunks is not smaller than the given size.
-        """
-        ...
-
-
-class MarkdownAnnotateImage(BaseOperation): ...
-
-
-class MarkdownAnnotateTable(BaseOperation): ...
-
-
-class MarkdownAnnotateCodeBlock(BaseOperation): ...
-
-
-class MardownSummarizeSection(BaseOperation): ...
