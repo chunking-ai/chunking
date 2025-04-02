@@ -1,4 +1,8 @@
-from chunking.base import BaseOperation, Chunk, ChunkGroup
+import logging
+
+from chunking.base import BaseOperation, Chunk, ChunkGroup, CType
+
+logger = logging.getLogger(__name__)
 
 
 def map_bytestring_index_to_string_index(byte_string, byte_indices):
@@ -24,8 +28,201 @@ def map_bytestring_index_to_string_index(byte_string, byte_indices):
     return byte_to_char_map
 
 
-def parse_tree_sitter_node(node):
-    ...
+def convert_setext_to_atx(markdown: str) -> str:
+    """Convert setext-style headings to ATX-style headings in markdown text.
+
+    Args:
+        markdown: Markdown text with setext headings
+
+    Returns:
+        str: Markdown text with ATX headings
+    """
+    if not markdown:
+        return markdown
+
+    lines = [(each.strip(), each) for each in markdown.split("\n")]
+    result = []
+    i = 0
+    in_code_block = False
+    line_count = len(lines)
+
+    while i < line_count:
+        if lines[i][0].startswith("```"):
+            in_code_block = not in_code_block
+            result.append(lines[i][1])
+            i += 1
+            continue
+
+        if in_code_block:
+            result.append(lines[i][1])
+            i += 1
+            continue
+
+        if i + 1 < line_count and lines[i][0]:
+            next_line_stripped = lines[i + 1][0]
+
+            if next_line_stripped:
+                first_char = next_line_stripped[0]
+                if (first_char == "=" or first_char == "-") and (
+                    next_line_stripped.count(first_char) == len(next_line_stripped)
+                ):
+
+                    level = 1 if first_char == "=" else 2
+                    result.append(f"{'#' * level} {lines[i][1]}")
+                    i += 2
+                    continue
+
+        result.append(lines[i][1])
+        i += 1
+
+    return "\n".join(result)
+
+
+def parse_tree_sitter_node(node, content) -> Chunk:
+    """Parse a tree-sitter node and its children into a Chunk.
+
+    Args:
+        node: the tree-sitter node to parse
+        content: the bytestring
+    """
+    if node.type == "pipe_table":
+        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        return Chunk(
+            mimetype="text/markdown",
+            ctype=CType.Table,
+            content=text,
+            text=text,
+        )
+    elif node.type == "paragraph":
+        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        return Chunk(
+            mimetype="text/plain",
+            ctype=CType.Para,
+            content=text,
+            text=text,
+        )
+    elif node.type == "html_block":
+        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        return Chunk(
+            mimetype="text/html",
+            ctype=CType.Code,
+            content=text,
+            text=text,
+        )
+    elif node.type == "fenced_code_block":
+        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        return Chunk(
+            mimetype="text/plain",
+            ctype=CType.Code,
+            content=text,
+            text=text,
+        )
+    elif node.type == "section":
+        chunk = Chunk(mimetype="text/markdown", ctype=CType.Para, content="", text="")
+        prev = None
+        for idx, child in enumerate(node.children):
+            child_chunk = parse_tree_sitter_node(child, content)
+            if idx == 0 and child_chunk.ctype == CType.Header:
+                chunk = child_chunk
+                continue
+            chunk.text += child_chunk.text + "\n"
+            child_chunk.parent = chunk
+            if chunk.child is None:
+                chunk.child = child_chunk
+            if prev is not None:
+                prev.next = child_chunk
+                child_chunk.prev = prev
+            prev = child_chunk
+        chunk.text = chunk.text.strip()
+        return chunk
+    elif "heading" in node.type:
+        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        lvl = None
+        for child in node.children:
+            if child.type == "atx_h1_marker":
+                lvl = 1
+            elif child.type == "atx_h2_marker":
+                lvl = 2
+            elif child.type == "atx_h3_marker":
+                lvl = 3
+            elif child.type == "atx_h4_marker":
+                lvl = 4
+            elif child.type == "atx_h5_marker":
+                lvl = 5
+            elif child.type == "atx_h6_marker":
+                lvl = 6
+
+        chunk = Chunk(
+            mimetype="text/plain",
+            content=text,
+            text=text,
+        )
+
+        if lvl is None:
+            chunk.ctype = CType.Para
+        else:
+            chunk.ctype = CType.Header
+            chunk.metadata = {"level": lvl}
+
+        return chunk
+    elif node.type == "document":
+        chunk = Chunk(mimetype="text/markdown", ctype=CType.Para, content="")
+        prev = None
+        for idx, child in enumerate(node.children):
+            child_chunk = parse_tree_sitter_node(child, content)
+            child_chunk.parent = chunk
+            if idx == 0:
+                chunk.child = child_chunk
+            else:
+                prev.next = child_chunk
+                child_chunk.prev = prev
+            prev = child_chunk
+        return chunk
+    elif node.type == "list":
+        chunk = Chunk(mimetype="text/markdown", ctype=CType.List, content="")
+        prev = None
+        # handle list items
+        for idx, child in enumerate(node.children):
+            if child.children[0].type == "list_marker_minus":
+                marker = "-"
+            elif child.children[0].type == "list_marker_plus":
+                marker = "+"
+            elif child.children[0].type == "list_marker_star":
+                marker = "*"
+            elif child.children[0].type == "list_marker_parenthesis":
+                marker = f"{idx+1})"
+            elif child.children[0].type == "list_marker_period":
+                marker = f"{idx+1}."
+            else:
+                raise NotImplementedError(
+                    f"List marker {child.children[0].type} not implemented"
+                )
+            list_item = Chunk(
+                mimetype="text/markdown", ctype=CType.List, content=marker, text=marker
+            )
+            item_content = parse_tree_sitter_node(child.children[1], content)
+            item_content.ctype = CType.Inline
+            item_content.parent = list_item
+            list_item.text += " " + item_content.text
+            list_item.child = item_content
+            if len(child.children) == 3:
+                nested_list = parse_tree_sitter_node(child.children[2], content)
+                list_item.text += "\n" + nested_list.text
+
+                nested_list.parent = list_item
+                item_content.next = nested_list
+                nested_list.prev = item_content
+
+            list_item.parent = chunk
+            if idx == 0:
+                chunk.child = list_item
+            if prev is not None:
+                prev.next = list_item
+                list_item.prev = prev
+            prev = list_item
+        return chunk
+    else:
+        raise NotImplementedError(f"Node type {node.type} not implemented")
 
 
 class Markdown(BaseOperation):
@@ -56,6 +253,14 @@ class Markdown(BaseOperation):
         output = ChunkGroup()
         for mc in chunk:
             ct = mc.content
+
+            # Convert setext to atx
+            ct_len = len(ct)
+            ct = convert_setext_to_atx(ct)
+            if len(ct) != ct_len:
+                logger.warning("Converted setext to atx")
+                mc.content = ct
+
             ctb = ct.encode("utf-8")
             if not isinstance(ct, str):
                 output.add_group(ChunkGroup(root=mc))
@@ -64,113 +269,13 @@ class Markdown(BaseOperation):
             tree = parser.parse(ctb)
             ts_root = tree.root_node
 
-            # Get chunk header range
-            stack, h_start, h_end, level = [ts_root], [], {}, []
-            while stack:
-                ts_node = stack.pop()
-                if "heading" in ts_node.type:
-                    lvl = None
-                    for child in ts_node.children:
-                        if child.type == "atx_h1_marker":
-                            lvl = 1
-                        elif child.type == "atx_h2_marker":
-                            lvl = 2
-                        elif child.type == "atx_h3_marker":
-                            lvl = 3
-                        elif child.type == "atx_h4_marker":
-                            lvl = 4
-                        elif child.type == "atx_h5_marker":
-                            lvl = 5
-                        elif child.type == "atx_h6_marker":
-                            lvl = 6
-                        elif child.type == "setext_h1_underline":
-                            lvl = 1
-                        elif child.type == "setext_h2_underline":
-                            lvl = 2
-
-                    if lvl is None:
-                        continue
-
-                    h_start.append(ts_node.start_byte)
-                    h_end[ts_node.start_byte] = ts_node.end_byte
-                    level.append(lvl)
-
-                for i in range(ts_node.child_count - 1, -1, -1):
-                    if child := ts_node.children[i]:
-                        stack.append(child)
-
-            if len(h_start) < 2:
-                # 1 or 0 heading, so nothing to split
-                output.add_group(ChunkGroup(root=mc))
-                continue
-
-            # Convert from byte index to character index
-            byte_to_char_map = map_bytestring_index_to_string_index(
-                ctb, h_start + list(h_end.values())
-            )
-            h_start = [byte_to_char_map[idx] for idx in h_start]
-            h_end = {
-                byte_to_char_map[idx]: byte_to_char_map[end]
-                for idx, end in h_end.items()
-            }
-
-            # Build the chunks
-            result = []
-            parents = []
-            prev, prev_lvl = mc, 0
-            for idx in range(len(h_start)):
-                lvl = level[idx]
-                start_idx = h_start[idx]
-                end_idx = h_end[start_idx]
-                heading = ct[start_idx:end_idx].strip()
-
-                if idx == 0:
-                    # Also include the content before the first heading
-                    start_idx = 0
-
-                if lvl > prev_lvl:
-                    parents.append((prev, prev_lvl))
-                    prev, prev_lvl = None, lvl
-                elif lvl < prev_lvl:
-                    prev, prev_lvl = parents.pop()
-
-                if idx + 1 == len(h_start):
-                    content = ct[start_idx:]
-                    text = content
-                else:
-                    content = ct[start_idx : h_start[idx + 1]]
-                    for i_ in range(idx, len(h_start)):
-                        if level[i_] <= lvl:
-                            text = ct[start_idx : h_start[i_]]
-                    else:
-                        text = content
-
-                chunk = Chunk(
-                    mimetype="plain/text",
-                    content=content,
-                    text=text,
-                    origin=mc.origin,
-                    parent=parents[-1][0],
-                    prev=prev,
-                    metadata={
-                        "heading_level": lvl,
-                        "heading": heading,
-                    },
-                    history=mc.history
-                    + [cls.name(min_chunk_size=min_chunk_size, length_fn=length_fn)],
-                )
-                result.append(chunk)
-                if prev is not None:
-                    prev.next = chunk
-                else:
-                    parents[-1][0].child = chunk
-                prev = chunk
-
-            output.add_group(ChunkGroup(root=mc, chunks=result))
+            child = parse_tree_sitter_node(ts_root, ctb)
+            mc.child = child
+            child.parent = mc
+            output.add_group(ChunkGroup(root=mc))
 
         return output
 
     @classmethod
     def py_dependency(cls) -> list[str]:
         return ["tree-sitter", "tree-sitter-markdown"]
-
