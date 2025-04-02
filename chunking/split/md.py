@@ -225,8 +225,6 @@ class MarkdownSplitByHeading(BaseOperation):
                     h_end[ts_node.start_byte] = ts_node.end_byte
                     level.append(lvl)
 
-                if len(ts_node.type) > 1:
-                    print("  " * current_level, ts_node.type, ts_node.start_byte, ts_node.end_byte)
                 for i in range(ts_node.child_count - 1, -1, -1):
                     if child := ts_node.children[i]:
                         stack.append((child, current_level + 1))
