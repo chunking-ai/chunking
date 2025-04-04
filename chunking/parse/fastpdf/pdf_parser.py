@@ -160,7 +160,7 @@ def parsed_pdf_to_markdown(
 
     def add_markdown_format(
         pages: list[dict[str, Any]],
-    ) -> list[str]:
+    ) -> list[dict[str, Any]]:
         """Convert a list of pages to Markdown."""
         pages_md = []
         output_pages = []
