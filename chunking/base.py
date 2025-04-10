@@ -42,7 +42,7 @@ class Origin:
 
 
 class CType:
-    """Represent a chunk type"""
+    """Collection of chunk types and its utility"""
 
     # Chunk with this type will be interpreted as the same level with the parent chunk
     # (e.g. long text)
@@ -56,6 +56,55 @@ class CType:
     Figure = "figure"
     Code = "code"
 
+    __available_types = None
+
+    @classmethod
+    def types(cls) -> list:
+        if cls.__available_types is None:
+            cls.__available_types = [
+                "inline",
+                "para",
+                "list",
+                "table",
+                "header",
+                "figure",
+                "code",
+            ]
+
+        return cls.__available_types
+
+    @classmethod
+    def markdown(cls, chunk) -> str | None:
+        """Represent chunk and its children as markdown text
+
+        Args:
+            chunk: the chunk to be represented as markdown text
+
+        Returns:
+            str: the markdown text
+        """
+        # If the chunk already has a text, return it
+        if chunk.text:
+            return chunk.text
+
+        # Otherwise, reconstruct the text from the children
+        text: str = chunk.content if isinstance(chunk.content, str) else ""
+        child = chunk.child
+        while child:
+            if child.ctype == CType.Header:
+                text += f"\n\n{'#' * (child.origin.location['level'] + 1)} {child.text}"
+            elif child.ctype == CType.Table:
+                text += f"\n\n{child.text}"
+            elif child.ctype == CType.List:
+                text += f"\n\n- {child.text}"
+            else:
+                text += f"\n\n{child.text}"
+
+            child = child.next
+
+        return text
+            
+        
 
 class Chunk:
     """Mandatory fields for an object represented in `chunking`.
@@ -80,6 +129,7 @@ class Chunk:
         origin: the location of this object in relative to the parent.
         metadata: metadata of the object, a free-style dictionary.
     """
+    ctype_class = CType
 
     def __init__(
         self,
@@ -268,7 +318,12 @@ class Chunk:
         if isinstance(self._child, Chunk):
             return self._child.id
 
-    def render(self, format: Literal["plain", "markdown", "html"] = "plain") -> str:
+    def render(
+        self,
+        format: Literal["plain", "markdown", "html"] = "plain",
+        header_level: int = 0,
+        **kwargs,
+    ) -> str:
         """Select the executor type to render the object
 
         Args:
@@ -282,6 +337,8 @@ class Chunk:
             current += "\n\n" + child.render(format=format)
             child = child.next
         return current
+
+    def _render_markdown(self, header_level: int = 0) -> str: ...
 
     def asdict(self):
         return {
