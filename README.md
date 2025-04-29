@@ -47,6 +47,11 @@ We are responsible for:
 
 (*) Due to the complexity and variety of how structures can be represented in different file types, there can be errors. `chunking` treats this as best effort. Refer xxx for difficult cases. File an issue if you encounter a problem.
 
+## Installation
+
+- pip install chunking
+- chunking setup-llm
+
 ## Cookbook
 
 TBD.
