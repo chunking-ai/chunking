@@ -9,7 +9,9 @@ from gradio_pdf import PDF
 import gradio as gr
 from chunking.controller import Controller
 from chunking.parser import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
-from chunking.util.plot import plot_pdf
+from chunking.util.plot import plot_img, plot_pdf
+from chunking.mime import mime_pdf
+
 
 METHOD_MAP = {
     "chunking_fastpdf": FastPDF,
@@ -21,6 +23,7 @@ METHOD_LIST = list(METHOD_MAP.keys())
 TMP_DIR = Path("/tmp/visualize")
 TMP_DIR.mkdir(exist_ok=True)
 ctrl = Controller()
+DEBUG_DIR = Path("debug")
 
 
 def format_chunk(chunk):
@@ -37,6 +40,9 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
     else:
         return "", "", "", []
 
+    if not pdf_path:
+        raise ValueError("No file provided")
+
     # benchmarking
     start = time.time()
     debug_image_paths = []
@@ -48,25 +54,36 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
         chunks = method.run(
             root,
             render_full_page=use_full_page,
+            debug_path=DEBUG_DIR,
         )
     else:
         chunks = method.run(root)
 
+    max_page = 0
     print("Table Of Content")
     for chunk in chunks:
         if chunk.metadata["label"] == "heading":
             print(chunk.text)
+        max_page = max(max_page, chunk.origin.location["page"])
 
     text = "\n\n".join([format_chunk(chunk) for chunk in chunks])
 
     duration = time.time() - start
-    duration_message = f"Conversion with {method} took *{duration:.2f} seconds*"
+    duration_per_page = duration / max_page
+    duration_message = (
+        f"Conversion with {method} took *{duration:.2f}s* total - "
+        f"*{duration_per_page:.2f}s* per page"
+    )
     print(duration_message)
 
     # create named temporary folder
     debug_dir = TMP_DIR / Path(pdf_path).stem
     debug_dir.mkdir(exist_ok=True)
-    plot_pdf(pdf_path, chunks, debug_dir)
+
+    if pdf_path.endswith(".pdf"):
+        plot_pdf(pdf_path, chunks, debug_dir)
+    else:
+        plot_img(pdf_path, chunks, debug_dir)
 
     debug_image_paths = list(debug_dir.glob("*.png"))
 
@@ -79,6 +96,9 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
 
 
 def to_zip_file(file_path, methods, *output_components):
+    if not file_path:
+        return gr.update(visible=False)
+
     markdown_text_dict = dict()
     debug_images_dict = defaultdict(list)
     for idx, method_name in enumerate(METHOD_LIST):
@@ -149,6 +169,12 @@ with gr.Blocks(
                 label="Upload PDF document",
                 file_types=[
                     ".pdf",
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                    ".tiff",
+                    ".tif",
+                    ".bmp",
                 ],
             )
             with gr.Accordion("Examples:"):

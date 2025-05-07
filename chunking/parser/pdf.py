@@ -159,6 +159,7 @@ class FastPDF(BaseOperation):
         render_full_page: bool = False,
         extract_table: bool = True,
         use_multiprocessing: bool = False,
+        debug_path: str | None = None,
         **kwargs,
     ) -> ChunkGroup:
         """Load the PDF with a fast PDF parser.
@@ -178,7 +179,7 @@ class FastPDF(BaseOperation):
         output = ChunkGroup()
         for pdf_root in chunk:
             logger.info(f"Parsing {pdf_root.origin.location}")
-            result = []
+            result_chunks = []
             if pdf_root.origin is None:
                 raise ValueError("Origin is not defined")
 
@@ -187,6 +188,7 @@ class FastPDF(BaseOperation):
                 pages = partition_pdf_layout(
                     str(pdf_root.origin.location),
                     render_full_page=render_full_page,
+                    debug_path=debug_path,
                 )
             else:
                 pages = parition_pdf_heuristic(
@@ -194,6 +196,8 @@ class FastPDF(BaseOperation):
                     executor=executor,
                     extract_table=extract_table,
                 )
+                if executor:
+                    executor.shutdown()
 
             for page in pages:
                 page_label = page["page"] + 1
@@ -212,7 +216,7 @@ class FastPDF(BaseOperation):
                         page_label,
                     )
                     text = block["text"]
-                    r = Chunk(
+                    c = Chunk(
                         ctype="text",
                         mimetype=mimetype,
                         content=text,
@@ -220,19 +224,21 @@ class FastPDF(BaseOperation):
                         parent=pdf_root,
                         origin=origin,
                     )
-                    r.history.append(
+                    c.history.append(
                         cls.name(
+                            use_layout_parser=use_layout_parser,
+                            render_full_page=render_full_page,
                             extract_table=extract_table,
                             **kwargs,
                         )
                     )
-                    result.append(r)
+                    result_chunks.append(c)
 
-            for idx, _c in enumerate(result[1:], start=1):
-                _c.prev = result[idx - 1]
-                result[idx - 1].next = _c
+            for idx, _c in enumerate(result_chunks[1:], start=1):
+                _c.prev = result_chunks[idx - 1]
+                result_chunks[idx - 1].next = _c
 
-            pdf_root.add_children(result)
+            pdf_root.add_children(result_chunks)
             output.append(pdf_root)
 
         return output
@@ -243,6 +249,7 @@ class FastPDF(BaseOperation):
             "pdftext",
             "img2table",
             "Pillow",
+            "rapid-layout",
         ]
 
 
