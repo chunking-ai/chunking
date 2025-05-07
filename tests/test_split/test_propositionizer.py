@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_docx
-from chunking.parse.pandoc_engine import PandocEngine
+from chunking.parser.pandoc_engine import PandocEngine
 from chunking.split.propositionizer import Propositionizer
 
 docx_path = str(Path(__file__).parent.parent / "assets" / "with_image.docx")

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_docx
-from chunking.parse.pandoc_engine import PandocEngine
+from chunking.parser.pandoc_engine import PandocEngine
 from chunking.split.agentic_chunker import AgenticChunker
 from chunking.split.split import FlattenToMarkdown
 

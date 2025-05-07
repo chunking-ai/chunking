@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_mp3, mime_wav
-from chunking.parse.audio import AudioWhisperParser
+from chunking.parser.audio import AudioWhisperParser
 
 mp3_path = str(Path(__file__).parent.parent / "assets" / "jfk_apollo_49.mp3")
 wav_path = str(Path(__file__).parent.parent / "assets" / "jfk_apollo_49.wav")

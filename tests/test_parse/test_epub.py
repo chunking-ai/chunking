@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_epub
-from chunking.parse.pandoc_engine import PandocEngine
+from chunking.parser.pandoc_engine import PandocEngine
 
 file_path = str(Path(__file__).parent.parent / "assets" / "long.epub")
 

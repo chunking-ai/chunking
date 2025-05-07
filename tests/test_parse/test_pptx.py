@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from chunking.base import Chunk
-from chunking.parse.pptx import PptxParser
+from chunking.parser.pptx import PptxParser
 from chunking.router import FileCoordinator
 
 pptx_path = str(Path(__file__).parent.parent / "assets" / "normal.pptx")

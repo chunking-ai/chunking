@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_csv
-from chunking.parse.csv import CsvParser
+from chunking.parser.csv import CsvParser
 
 file_path = str(Path(__file__).parent.parent / "assets" / "contains_empty_cell.csv")
 

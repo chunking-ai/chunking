@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_xlsx
-from chunking.parse.xlsx import XlsxOpenpyxlParser
+from chunking.parser.xlsx import XlsxOpenpyxlParser
 
 asset_folder = Path(__file__).parent.parent / "assets"
 multi_sheets = str(asset_folder / "multi_sheets.xlsx")

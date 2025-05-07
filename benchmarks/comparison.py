@@ -8,7 +8,7 @@ print(f"Import unstructured {time.time() - start}")
 
 start = time.time()
 from chunking.chunk.text import chunk_by_characters  # noqa: E402
-from chunking.parse.pdf import pdf_by_pymupdf  # noqa: E402
+from chunking.parser.pdf import pdf_by_pymupdf  # noqa: E402
 
 print(f"Import chunking {time.time() - start}")
 

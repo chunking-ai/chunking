@@ -74,18 +74,18 @@ class FileCoordinator:
         self._parsers: dict[str, list] = self._load_parsers()
 
     def _load_parsers(self) -> dict[str, list]:
-        from chunking.parse.audio import AudioWhisperParser
-        from chunking.parse.dict_list import JsonParser, TomlParser, YamlParser
-        from chunking.parse.directory import DirectoryParser
-        from chunking.parse.html import PandocHtmlParser
-        from chunking.parse.image import RapidOCRImageText
-        from chunking.parse.md import Markdown
-        from chunking.parse.pandoc_engine import PandocEngine
-        from chunking.parse.pdf import FastPDF
-        from chunking.parse.pptx import PptxParser
-        from chunking.parse.text import TextParser
-        from chunking.parse.video import VideoWhisperParser
-        from chunking.parse.xlsx import XlsxOpenpyxlParser
+        from chunking.parser.audio import AudioWhisperParser
+        from chunking.parser.dict_list import JsonParser, TomlParser, YamlParser
+        from chunking.parser.directory import DirectoryParser
+        from chunking.parser.html import PandocHtmlParser
+        from chunking.parser.image import RapidOCRImageText
+        from chunking.parser.md import Markdown
+        from chunking.parser.pandoc_engine import PandocEngine
+        from chunking.parser.pdf import FastPDF
+        from chunking.parser.pptx import PptxParser
+        from chunking.parser.text import TextParser
+        from chunking.parser.video import VideoWhisperParser
+        from chunking.parser.xlsx import XlsxOpenpyxlParser
 
         return {
             MimeType.text: [TextParser],

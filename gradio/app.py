@@ -8,7 +8,7 @@ from gradio_pdf import PDF
 
 import gradio as gr
 from chunking.mime import mime_pdf
-from chunking.parse import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
+from chunking.parser import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
 from chunking.util.plot import plot_pdf
 
 METHOD_MAP = {

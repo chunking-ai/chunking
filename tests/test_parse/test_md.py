@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_md
-from chunking.parse.md import Markdown
+from chunking.parser.md import Markdown
 
 md_path1 = str(Path(__file__).parent.parent / "assets" / "lz.md")
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from chunking.base import Chunk
-from chunking.parse.text import TextParser
+from chunking.parser.text import TextParser
 from chunking.router import FileCoordinator
 
 file_path = str(Path(__file__).parent.parent / "assets" / "long.txt")

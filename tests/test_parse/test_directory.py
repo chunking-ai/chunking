@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from chunking.base import Chunk
-from chunking.parse.directory import DirectoryParser
+from chunking.parser.directory import DirectoryParser
 from chunking.router import FileCoordinator
 
 path = str(Path(__file__).parent.parent)

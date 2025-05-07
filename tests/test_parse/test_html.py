@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_html
-from chunking.parse.html import PandocHtmlParser
+from chunking.parser.html import PandocHtmlParser
 
 html_path = str(Path(__file__).parent.parent / "assets" / "long.html")
 

@@ -55,7 +55,7 @@ if __name__ == "__main__":
     import sys
 
     from chunking.mime import mime_pdf
-    from chunking.parse import DoclingPDF, FastPDF, UnstructuredPDF
+    from chunking.parser import DoclingPDF, FastPDF, UnstructuredPDF
 
     pdf_path = sys.argv[1]
     root = mime_pdf.as_root_chunk(pdf_path)

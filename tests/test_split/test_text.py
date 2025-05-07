@@ -2,7 +2,7 @@ from pathlib import Path
 
 from chunking.base import Chunk
 from chunking.mime import mime_json
-from chunking.parse.dict_list import JsonParser, TomlParser, YamlParser
+from chunking.parser.dict_list import JsonParser, TomlParser, YamlParser
 from chunking.split.text import ChunkJsonString
 
 json_path = str(Path(__file__).parent.parent / "assets" / "long.json")
