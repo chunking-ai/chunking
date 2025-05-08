@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import cv2
 import numpy as np
@@ -24,7 +24,6 @@ from chunking.parser.fastpdf.util import (
     union_bbox,
 )
 
-ocr_engine = None
 QUOTE_LOOSEBOX: bool = True
 SUPERSCRIPT_HEIGHT_THRESHOLD: float = 0.7
 LINE_DISTANCE_THRESHOLD: float = 0.1
@@ -40,6 +39,33 @@ LAYOUT_CLASS_TO_BLOCK_TYPE = {
     "equation": "formula",
     "text": "text",
 }
+
+
+class SingletonModelEngine:
+    _instance: Optional["SingletonModelEngine"] = None
+    _ocr_engine: Optional[RapidOCR] = None
+    _layout_engine: Optional[RapidLayout] = None
+
+    def __new__(cls) -> "SingletonModelEngine":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @property
+    def ocr_engine(self) -> RapidOCR:
+        if self._ocr_engine is None:
+            self._ocr_engine = RapidOCR(
+                params={"Global.lang_det": "en_mobile", "Global.lang_rec": "en_mobile"}
+            )
+        return self._ocr_engine
+
+    @property
+    def layout_engine(self) -> RapidLayout:
+        if self._layout_engine is None:
+            self._layout_engine = RapidLayout(
+                model_type="yolov8n_layout_general6", iou_thres=0.5, conf_thres=0.4
+            )
+        return self._layout_engine
 
 
 def assign_lines_to_blocks(
@@ -92,14 +118,13 @@ def is_ocr_required(blocks: list[dict[str, Any]], ocr_thres=0.75) -> bool:
 def do_ocr_page(
     img, page_idx: int, debug_path: Path | None = None, append_space: bool = True
 ):
-    global ocr_engine
-    if ocr_engine is None:
-        ocr_engine = RapidOCR(
-            params={"Global.lang_det": "en_mobile", "Global.lang_rec": "en_mobile"}
-        )
-    ocr_result = ocr_engine(img, use_cls=False)
+    ocr_result = SingletonModelEngine().ocr_engine(img, use_cls=False)
     img_h, img_w = img.shape[:2]
     spans = []
+
+    if ocr_result.boxes is None or ocr_result.txts is None:
+        print(f"No OCR result on page {page_idx}")
+        return spans
 
     for bbox, text in zip(ocr_result.boxes, ocr_result.txts):
         all_x = [p[0] for p in bbox]
@@ -253,11 +278,6 @@ def partition_pdf_layout(
     doc_path = Path(doc_path)
     is_image = doc_path.suffix.lower() != ".pdf"
 
-    layout_engine = RapidLayout(
-        model_type="yolov8n_layout_general6",
-        iou_thres=0.5,
-        conf_thres=0.4,
-    )
     output_pages = []
     if debug_path is not None:
         debug_path = Path(debug_path)
@@ -295,12 +315,14 @@ def partition_pdf_layout(
             page_width = page_height = 1
 
         if render_full_page:
-            # render the whole page with layout-preserving text
             # use OCR to get text if lines is empty
             is_ocr = len(lines) == 0
             if is_ocr:
                 lines = get_text_ocr(page_img, page_idx, debug_path)
 
+            if not lines:
+                continue
+            # render the whole page with layout-preserving text
             rendered_content = spans_to_layout_text(
                 lines=lines,
                 filter_invalid_spans=not is_ocr,
@@ -343,7 +365,9 @@ def partition_pdf_layout(
                 }
             )
         else:
-            detected_boxes, scores, class_names, elapsed_time = layout_engine(page_img)
+            detected_boxes, scores, class_names, elapsed_time = (
+                SingletonModelEngine().layout_engine(page_img)
+            )
             scaled_boxes = [
                 scale_bbox(box, image_page_w, image_page_h) for box in detected_boxes
             ]

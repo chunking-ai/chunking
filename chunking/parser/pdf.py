@@ -1,6 +1,8 @@
 import io
 import logging
 
+from concurrent.futures import ProcessPoolExecutor
+
 from chunking.base import BaseOperation, Chunk, ChunkGroup, CType
 from chunking.mime import MimeType, mime_pdf
 
@@ -158,7 +160,7 @@ class FastPDF(BaseOperation):
         use_layout_parser: bool = True,
         render_full_page: bool = False,
         extract_table: bool = True,
-        use_multiprocessing: bool = False,
+        multiprocessing_executor: ProcessPoolExecutor | None = None,
         debug_path: str | None = None,
         **kwargs,
     ) -> ChunkGroup:
@@ -167,12 +169,9 @@ class FastPDF(BaseOperation):
         Args:
             chunk: The input chunk to process.
         """
-        from concurrent.futures import ProcessPoolExecutor
-
         from .fastpdf.pdf_heuristic_parser import parition_pdf_heuristic
         from .fastpdf.pdf_layout_parser import partition_pdf_layout
 
-        executor = ProcessPoolExecutor() if use_multiprocessing else None
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
 
@@ -184,7 +183,7 @@ class FastPDF(BaseOperation):
                 raise ValueError("Origin is not defined")
 
             # call the main function to partition the PDF
-            if use_layout_parser:
+            if use_layout_parser or render_full_page:
                 pages = partition_pdf_layout(
                     str(pdf_root.origin.location),
                     render_full_page=render_full_page,
@@ -193,11 +192,9 @@ class FastPDF(BaseOperation):
             else:
                 pages = parition_pdf_heuristic(
                     str(pdf_root.origin.location),
-                    executor=executor,
+                    executor=multiprocessing_executor,
                     extract_table=extract_table,
                 )
-                if executor:
-                    executor.shutdown()
 
             for page in pages:
                 page_label = page["page"] + 1

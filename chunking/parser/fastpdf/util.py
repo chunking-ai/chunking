@@ -6,7 +6,6 @@ import cv2
 import numpy as np
 
 SPAN_JOIN_CHAR = " "
-SPAN_LINE_BREAK_CHAR = "⏎"
 
 MIN_W_MULTIPLIER = 0.7
 MIN_H_MULTIPLIER = 0.5
@@ -232,14 +231,9 @@ def spans_to_layout_text(
     if len(spans) == 0:
         return ""
 
-    if lines:
-        median_c_height = (
-            np.median([get_bbox_h(line["bbox"]) for line in lines]) * h_multiplier
-        )
-    else:
-        median_c_height = (
-            np.median([get_bbox_h(span["bbox"]) for span in spans]) * h_multiplier
-        )
+    median_c_height = (
+        np.median([get_bbox_h(span["bbox"]) for span in spans]) * h_multiplier
+    )
     median_c_width = (
         np.median([get_bbox_w(span["bbox"]) / len(span["text"]) for span in spans])
         * w_multiplier
@@ -249,13 +243,17 @@ def spans_to_layout_text(
     left_pos = min(get_span_anchor_x(span) for span in spans)
 
     # map bbox to grid
-    mapped_bottomleft_spans_pos = [
-        (
-            int(round((get_span_anchor_x(span) - left_pos) / median_c_width)),
-            int(round((get_span_anchor_y(span) - bottom_pos) / median_c_height)),
-        )
-        for span in spans
-    ]
+    try:
+        mapped_bottomleft_spans_pos = [
+            (
+                int(round((get_span_anchor_x(span) - left_pos) / median_c_width)),
+                int(round((get_span_anchor_y(span) - bottom_pos) / median_c_height)),
+            )
+            for span in spans
+        ]
+    except (ValueError, ZeroDivisionError):
+        print("Error in mapping spans to grid positions.")
+        return SPAN_JOIN_CHAR.join(span["text"] for span in spans)
 
     # group spans by row
     rows = defaultdict(list)
@@ -287,7 +285,6 @@ def spans_to_layout_text(
                     # rescale horizontal space
                     if w_multiplier - RESCALE_DECREMENT >= MIN_W_MULTIPLIER:
                         w_multiplier -= RESCALE_DECREMENT
-                        print(f"Rescaling w_multiplier to {w_multiplier:.1f}")
                         return spans_to_layout_text(
                             spans=spans,
                             lines=lines,
@@ -302,7 +299,6 @@ def spans_to_layout_text(
                     elif h_multiplier - RESCALE_DECREMENT >= MIN_H_MULTIPLIER:
                         # rescale vertical space
                         h_multiplier -= RESCALE_DECREMENT
-                        print(f"Rescaling h_multiplier to {h_multiplier:.1f}")
                         return spans_to_layout_text(
                             spans=spans,
                             lines=lines,
