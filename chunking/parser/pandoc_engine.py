@@ -10,7 +10,7 @@ except ImportError:
     pass
 
 from chunking.base import BaseOperation, Chunk, ChunkGroup, CType
-from chunking.mime.guess import guess_mimetype
+from chunking.mime import guess_mimetype
 
 logger = logging.getLogger(__name__)
 
