@@ -1,6 +1,8 @@
 from bisect import bisect_left
 from typing import Callable, List, Optional
 
+from tqdm import tqdm
+
 from chunking.base import BaseOperation, Chunk, ChunkGroup
 from chunking.models import completion, parse_json_from_text
 from chunking.split.split import _non_whitespace_separators, split_text
@@ -49,7 +51,7 @@ def _get_cumulative_token_counts(splits: List[str], length_fn: Callable) -> List
 
 
 def _is_mime_text(chunk: Chunk) -> bool:
-    return chunk.mimetype == "plain/text" and chunk.content
+    return chunk.mimetype == "text/plain" and chunk.content
 
 
 class LumberChunker(BaseOperation):
@@ -68,6 +70,7 @@ class LumberChunker(BaseOperation):
         length_fn: Callable[[str], int] | None | str = word_len,
         separators: Optional[list[str]] = None,
         chunk_join_char: str = DEFAULT_CHUNK_JOIN_CHAR,
+        verbose: bool = True,
         **kwargs,
     ) -> ChunkGroup:
         """Chunk the text into smaller pieces based on the content of the text."""
@@ -86,9 +89,14 @@ class LumberChunker(BaseOperation):
             chunks = ChunkGroup([chunks])
 
         output = ChunkGroup()
-        for root in chunks:
+        for root_id, root in enumerate(chunks):
             child_chunks = [item for _, item in root.walk() if _is_mime_text(item)]
-            for child_chunk in child_chunks:
+            for child_chunk in tqdm(
+                child_chunks,
+                desc=f"Chunking item #{root_id}",
+                total=len(child_chunks),
+                disable=not verbose,
+            ):
                 # Get candidate splits
                 splits = split_text(
                     child_chunk.content,
