@@ -30,6 +30,7 @@ class Controller:
 
     def _load_parsers(self) -> dict[str, list]:
         from chunking.parser.audio import AudioWhisperParser
+        from chunking.parser.csv import CsvParser
         from chunking.parser.dict_list import JsonParser, TomlParser, YamlParser
         from chunking.parser.directory import DirectoryParser
         from chunking.parser.html import PandocHtmlParser
@@ -52,11 +53,13 @@ class Controller:
             MimeType.docx: [PandocEngine],
             MimeType.pptx: [PptxParser],
             MimeType.xlsx: [XlsxOpenpyxlParser],
+            MimeType.csv: [CsvParser],
             MimeType.json: [JsonParser],
             MimeType.toml: [TomlParser],
             MimeType.yaml: [YamlParser],
             MimeType.yaml_x: [YamlParser],
             MimeType.wav: [AudioWhisperParser],
+            MimeType.wav_x: [AudioWhisperParser],
             MimeType.mp3: [AudioWhisperParser],
             MimeType.mp4: [VideoWhisperParser],
             MimeType.epub: [PandocEngine],
