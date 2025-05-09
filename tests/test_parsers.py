@@ -15,7 +15,7 @@ from chunking.parser.text import TextParser
 from chunking.parser.video import VideoWhisperParser
 from chunking.parser.xlsx import XlsxOpenpyxlParser
 
-asset_folder = Path(__file__).parent.parent / "assets"
+asset_folder = Path(__file__).parent / "assets"
 
 pdf_path1 = str(asset_folder / "short.pdf")
 pdf_path2 = str(asset_folder / "short_image.pdf")
