@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from chunking.base import BaseOperation, Chunk, ChunkGroup, CType
+from chunking.mime import MimeType
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class AudioWhisperParser(BaseOperation):
 
                 # Create a transcription chunk with segments in metadata
                 transcript_chunk = Chunk(
-                    mimetype="text/plain",
+                    mimetype=MimeType.text,
                     ctype=CType.Para,
                     content=transcription,
                     origin=mc.origin,
