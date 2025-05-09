@@ -91,6 +91,8 @@ class LumberChunker(BaseOperation):
         output = ChunkGroup()
         for root_id, root in enumerate(chunks):
             child_chunks = [item for _, item in root.walk() if _is_mime_text(item)]
+            split_chunks = []
+
             for child_chunk in tqdm(
                 child_chunks,
                 desc=f"Chunking item #{root_id}",
@@ -108,7 +110,7 @@ class LumberChunker(BaseOperation):
                 )
                 if len(splits) <= 1:
                     # If the split is too small, just return the original chunk
-                    output.append(child_chunk)
+                    split_chunks.append(child_chunk)
                     continue
 
                 num_splits = len(splits)
@@ -118,7 +120,6 @@ class LumberChunker(BaseOperation):
                     splits_with_id, length_fn
                 )
                 # Repeatedly call completion prompt to get the split index
-                split_chunks = []
                 current_index = 0
                 current_token_count = 0
                 while current_index < num_splits:
@@ -152,11 +153,12 @@ class LumberChunker(BaseOperation):
                         if current_index >= split_index:
                             split_index = current_index + 1
 
+                    new_split_text = chunk_join_char.join(
+                        [split for split in splits[current_index:split_index]]
+                    )
                     split_chunks.append(
                         Chunk(
-                            text=chunk_join_char.join(
-                                [split for split in splits[current_index:split_index]]
-                            ),
+                            text=new_split_text,
                             content=child_chunk.content,
                             mimetype=child_chunk.mimetype,
                             summary=child_chunk.summary,
@@ -169,12 +171,12 @@ class LumberChunker(BaseOperation):
                     ]
                     current_index = split_index
 
-                for idx, ch in enumerate(split_chunks[1:], start=1):
-                    ch.prev = split_chunks[idx - 1]
-                    split_chunks[idx - 1].next = ch
+            for idx, ch in enumerate(split_chunks[1:], start=1):
+                ch.prev = split_chunks[idx - 1]
+                split_chunks[idx - 1].next = ch
 
-                # Return the first chunk
-                if len(split_chunks) > 0:
-                    output.append(split_chunks[0])
+            # Return the first chunk
+            if len(split_chunks) > 0:
+                output.append(split_chunks[0])
 
         return output
