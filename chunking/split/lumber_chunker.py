@@ -119,9 +119,9 @@ class LumberChunker(BaseOperation):
                 )
                 # Repeatedly call completion prompt to get the split index
                 split_chunks = []
-                current_pos = 0
+                current_index = 0
                 current_token_count = 0
-                while current_pos < num_splits:
+                while current_index < num_splits:
                     group_end_index = min(
                         bisect_left(
                             cumulative_token_counts, current_token_count + chunk_size
@@ -130,12 +130,12 @@ class LumberChunker(BaseOperation):
                         num_splits,
                     )
 
-                    if group_end_index <= current_pos + 1:
-                        split_index = current_pos + 1
+                    if group_end_index <= current_index + 1:
+                        split_index = current_index + 1
                     else:
                         prompt = PROMPT_TEMPLATE.format(
                             passages="\n".join(
-                                splits_with_id[current_pos:group_end_index]
+                                splits_with_id[current_index:group_end_index]
                             )
                         )
                         response = completion(
@@ -149,13 +149,13 @@ class LumberChunker(BaseOperation):
                         else:
                             split_index = int(decoded_dict["split_index"])
 
-                        if current_pos >= split_index:
-                            split_index = current_pos + 1
+                        if current_index >= split_index:
+                            split_index = current_index + 1
 
                     split_chunks.append(
                         Chunk(
                             text=chunk_join_char.join(
-                                [split for split in splits[current_pos:split_index]]
+                                [split for split in splits[current_index:split_index]]
                             ),
                             content=child_chunk.content,
                             mimetype=child_chunk.mimetype,
@@ -167,7 +167,7 @@ class LumberChunker(BaseOperation):
                     current_token_count = cumulative_token_counts[
                         min(split_index, num_splits - 1)
                     ]
-                    current_pos = split_index
+                    current_index = split_index
 
                 for idx, ch in enumerate(split_chunks[1:], start=1):
                     ch.prev = split_chunks[idx - 1]
