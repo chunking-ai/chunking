@@ -3,7 +3,7 @@ from typing import Callable, List, Optional
 
 from tqdm import tqdm
 
-from chunking.base import BaseOperation, Chunk, ChunkGroup
+from chunking.base import BaseOperation, Chunk, ChunkGroup, CType
 from chunking.mime import MimeType
 from chunking.models import completion, parse_json_from_text
 from chunking.split.split import _non_whitespace_separators, split_text
@@ -52,7 +52,9 @@ def _get_cumulative_token_counts(splits: List[str], length_fn: Callable) -> List
 
 
 def _is_mime_text(chunk: Chunk) -> bool:
-    return chunk.mimetype == MimeType.text and chunk.content
+    return (
+        chunk.mimetype == MimeType.text and chunk.content and chunk.ctype != CType.Root
+    )
 
 
 class LumberChunker(BaseOperation):
@@ -111,7 +113,7 @@ class LumberChunker(BaseOperation):
                 )
                 if len(splits) <= 1:
                     # If the split is too small, just return the original chunk
-                    split_chunks.append(child_chunk)
+                    split_chunks.append(child_chunk.clone_without_relations())
                     continue
 
                 num_splits = len(splits)
@@ -160,9 +162,11 @@ class LumberChunker(BaseOperation):
                     split_chunks.append(
                         Chunk(
                             text=new_split_text,
-                            content=child_chunk.content,
+                            content=new_split_text,
                             mimetype=child_chunk.mimetype,
+                            ctype=child_chunk.ctype,
                             summary=child_chunk.summary,
+                            origin=child_chunk.origin,
                             metadata=child_chunk.metadata,
                         )
                     )
@@ -172,12 +176,8 @@ class LumberChunker(BaseOperation):
                     ]
                     current_index = split_index
 
-            for idx, ch in enumerate(split_chunks[1:], start=1):
-                ch.prev = split_chunks[idx - 1]
-                split_chunks[idx - 1].next = ch
-
-            # Return the first chunk
-            if len(split_chunks) > 0:
-                output.append(split_chunks[0])
+            new_root = root.clone_without_relations()
+            new_root.add_children(split_chunks)
+            output.append(new_root)
 
         return output
