@@ -30,8 +30,10 @@ class SycamorePDF(BaseOperation):
         "List-item",
         "Text",
         "Footnote",
+        "table",
+        "Table",
     }
-    image_types = {"Formula", "Image", "table", "Table"}
+    image_types = {"Formula", "Image"}
     _label_mapping = {
         "Formula": CType.Fomula,
         "Page-header": CType.Header,

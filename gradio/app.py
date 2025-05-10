@@ -91,8 +91,7 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
 
     rendered_texts = [format_chunk(chunk) for chunk in chunks]
     # remove empty strings
-    rendered_texts = [text for text in rendered_texts if text]
-    combined_text = "\n\n".join(rendered_texts)
+    combined_text = "\n\n".join([text for text in rendered_texts if text])
 
     duration = time.time() - start
     duration_per_page = duration / max_page
