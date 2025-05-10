@@ -230,18 +230,6 @@ def render_blocks(
                     if export_raw_img
                     else crop_img_and_export_base64(page_img, block["bbox"])
                 )
-                # block_img_base64 = crop_img_and_export_base64(
-                #     page_img,
-                #     block["bbox"],
-                # )
-                # block_img_elem = f'<img src="{block_img_base64}" />'
-                # block_text = (
-                #     "{}" "<details><summary>({} image)</summary>" "{}</details>"
-                # ).format(
-                #     f"```\n{block_text}\n```\n\n" if block_text else "",
-                #     class_name,
-                #     block_img_elem,
-                # )
             if block_text:
                 block_text = f"```{class_name}\n{block_text}\n```"
         else:
