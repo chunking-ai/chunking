@@ -2,12 +2,13 @@ from collections import defaultdict
 from pathlib import Path
 
 import cv2
-from img2table.document import PDF
 
 from chunking.base import Chunk, ChunkGroup
 
 
 def plot_pdf(pdf_path: str, chunks: ChunkGroup, output_path: str):
+    from img2table.document import PDF
+
     output_path = Path(output_path)
     output_path.mkdir(exist_ok=True)
     doc = PDF(pdf_path)

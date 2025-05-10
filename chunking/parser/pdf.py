@@ -187,7 +187,7 @@ class FastPDF(BaseOperation):
         output = ChunkGroup()
         for pdf_root in chunk:
             logger.info(f"Parsing {pdf_root.origin.location}")
-            result_chunks = []
+            result = []
             if pdf_root.origin is None:
                 raise ValueError("Origin is not defined")
 
@@ -234,21 +234,9 @@ class FastPDF(BaseOperation):
                         parent=pdf_root,
                         origin=origin,
                     )
-                    c.history.append(
-                        cls.name(
-                            use_layout_parser=use_layout_parser,
-                            render_full_page=render_full_page,
-                            extract_table=extract_table,
-                            **kwargs,
-                        )
-                    )
-                    result_chunks.append(c)
+                    result.append(c)
 
-            for idx, _c in enumerate(result_chunks[1:], start=1):
-                _c.prev = result_chunks[idx - 1]
-                result_chunks[idx - 1].next = _c
-
-            pdf_root.add_children(result_chunks)
+            pdf_root.add_children(result)
             output.append(pdf_root)
 
         return output
