@@ -32,7 +32,7 @@ def plot_pdf(pdf_path: str, chunks: ChunkGroup, output_path: str):
             x2 = x2 * page_image_w
             y2 = y2 * page_image_h
 
-            if chunk_type in ["text", "para"]:
+            if chunk_type in ["text", "para", "list"]:
                 color = (0, 0, 255)
             else:
                 color = (255, 0, 0)
