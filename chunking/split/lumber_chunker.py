@@ -129,8 +129,7 @@ class LumberChunker(BaseOperation):
                     group_end_index = min(
                         bisect_left(
                             cumulative_token_counts, current_token_count + chunk_size
-                        )
-                        - 1,
+                        ),
                         num_splits,
                     )
 
