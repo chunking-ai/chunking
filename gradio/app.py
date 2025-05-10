@@ -7,11 +7,11 @@ from pathlib import Path
 from gradio_pdf import PDF
 
 import gradio as gr
+from chunking.base import CType
 from chunking.controller import Controller
 from chunking.parser import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
+from chunking.parser.fastpdf.util import bytes_to_base64
 from chunking.util.plot import plot_img, plot_pdf
-from chunking.mime import mime_pdf
-
 
 METHOD_MAP = {
     "chunking_fastpdf": FastPDF,
@@ -27,11 +27,30 @@ DEBUG_DIR = Path("debug")
 
 
 def format_chunk(chunk):
-    text = chunk.text
-    if chunk.metadata["label"] == "heading":
-        text = f"### {text}"
+    if chunk.ctype == CType.Root or not chunk.content:
+        return ""
 
-    return text
+    if chunk.mimetype in ["image/png", "image/jpeg", "image/jpg"]:
+        block_img_base64 = bytes_to_base64(
+            chunk.content,
+            mime_type=chunk.mimetype,
+        )
+        block_text = chunk.text
+        block_type = chunk.ctype
+
+        block_img_elem = f'<img src="{block_img_base64}" />'
+        block_text = (
+            "{}\n\n<details><summary>({} image)</summary>" "{}</details>"
+        ).format(
+            block_text,
+            block_type,
+            block_img_elem,
+        )
+    elif chunk.ctype == CType.Header:
+        block_text = f"### {chunk.text}"
+    else:
+        block_text = chunk.text
+    return block_text
 
 
 def convert_document(pdf_path, method, use_full_page=False, enabled=True):
@@ -59,14 +78,21 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
     else:
         chunks = method.run(root)
 
+    # serialie the child chunks to list
+    chunks = [chunk for _, chunk in chunks[0].walk() if chunk.ctype != CType.Root]
+    print("Total chunks:", len(chunks))
+
     max_page = 0
     print("Table Of Content")
     for chunk in chunks:
-        if chunk.metadata["label"] == "heading":
+        if chunk.ctype == CType.Header:
             print(chunk.text)
         max_page = max(max_page, chunk.origin.location["page"])
 
-    text = "\n\n".join([format_chunk(chunk) for chunk in chunks])
+    rendered_texts = [format_chunk(chunk) for chunk in chunks]
+    # remove empty strings
+    rendered_texts = [text for text in rendered_texts if text]
+    combined_text = "\n\n".join(rendered_texts)
 
     duration = time.time() - start
     duration_per_page = duration / max_page
@@ -89,8 +115,8 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
 
     return (
         duration_message,
-        text,
-        text,
+        combined_text,
+        combined_text,
         debug_image_paths,
     )
 

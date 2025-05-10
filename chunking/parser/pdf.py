@@ -1,6 +1,5 @@
 import io
 import logging
-
 from concurrent.futures import ProcessPoolExecutor
 
 from chunking.base import BaseOperation, Chunk, ChunkGroup, CType
@@ -34,6 +33,7 @@ class SycamorePDF(BaseOperation):
     }
     image_types = {"Formula", "Image", "table", "Table"}
     _label_mapping = {
+        "Formula": CType.Fomula,
         "Page-header": CType.Header,
         "Section-header": CType.Header,
         "Title": CType.Header,
@@ -152,6 +152,13 @@ class FastPDF(BaseOperation):
     """Parsing PDF using a fast and efficient parser"""
 
     supported_mimetypes = ["application/pdf"]
+    _label_mapping = {
+        "heading": CType.Header,
+        "image": CType.Figure,
+        "table": CType.Table,
+        "formula": CType.Fomula,
+        "text": CType.Para,
+    }
 
     @classmethod
     def run(
@@ -199,9 +206,14 @@ class FastPDF(BaseOperation):
             for page in pages:
                 page_label = page["page"] + 1
                 for block in page["blocks"]:
-                    # only support text elements for now
-                    # TODO: add support for other types (image)
-                    mimetype = MimeType.text
+                    text = block["text"]
+                    image_content = block.get("image")
+                    if image_content:
+                        mimetype = "image/png"
+                        content = image_content
+                    else:
+                        mimetype = MimeType.text
+                        content = text
                     x1, y1, x2, y2 = block["bbox"]
 
                     origin = mime_pdf.to_origin(
@@ -212,11 +224,10 @@ class FastPDF(BaseOperation):
                         y2,
                         page_label,
                     )
-                    text = block["text"]
                     c = Chunk(
-                        ctype="text",
+                        ctype=cls._label_mapping.get(block["type"], "text"),
                         mimetype=mimetype,
-                        content=text,
+                        content=content,
                         text=text,
                         parent=pdf_root,
                         origin=origin,
@@ -314,7 +325,7 @@ class UnstructuredPDF(BaseOperation):
         "Image": CType.Figure,
         "Picture": CType.Figure,
         "Figure": CType.Figure,
-        "Formula": CType.Inline,
+        "Formula": CType.Fomula,
         "Table": CType.Table,
     }
 
@@ -416,7 +427,7 @@ class DoclingPDF(BaseOperation):
     _label_mapping = {  # taken from docling.types.doc.labels.DocItemLabel
         "caption": CType.Para,
         "footnote": CType.Para,
-        "formula": CType.Inline,
+        "formula": CType.Fomula,
         "list_item": CType.List,
         "page_footer": CType.Para,
         "page_header": CType.Para,

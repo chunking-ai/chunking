@@ -506,3 +506,22 @@ def crop_img_and_export_base64(img: np.ndarray, box: list[float]) -> str:
     img_base64 = base64.b64encode(buffer).decode("utf-8")
 
     return "data:image/png;base64," + img_base64
+
+
+def crop_img_and_export_bytes(img: np.ndarray, box: list[float]) -> bytes:
+    """Crop the image and export it as base64."""
+    x1, y1, x2, y2 = box
+    x1 = int(x1 * img.shape[1])
+    y1 = int(y1 * img.shape[0])
+    x2 = int(x2 * img.shape[1])
+    y2 = int(y2 * img.shape[0])
+
+    cropped_img = img[y1:y2, x1:x2]
+    _, buffer = cv2.imencode(".png", cropped_img)  # or '.jpg'
+    return buffer.tobytes()
+
+
+def bytes_to_base64(bytes: Any, mime_type: str) -> str:
+    """Convert a PIL image to base64."""
+    img_base64 = base64.b64encode(bytes).decode("utf-8")
+    return f"data:{mime_type};base64,{img_base64}"

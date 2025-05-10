@@ -12,6 +12,7 @@ from rapidocr import RapidOCR
 
 from chunking.parser.fastpdf.util import (
     crop_img_and_export_base64,
+    crop_img_and_export_bytes,
     fix_unicode_encoding,
     get_block_order,
     get_overlap_ratio,
@@ -183,6 +184,7 @@ def render_blocks(
     page_img: np.ndarray | None = None,
     optimize_2d_text: bool = True,
     is_ocr: bool = False,
+    export_raw_img: bool = True,
 ) -> list[dict[str, Any]]:
     """Render blocks with metadata to final text."""
     page_blocks = []
@@ -195,6 +197,7 @@ def render_blocks(
         block_lines = block.get("lines", [])
         block_spans = [span for line in block_lines for span in line["spans"]]
         is_text_2d = len(block_lines) > MIN_NUM_LINES_2D and is_2d_layout(block_spans)
+        img_content = None
 
         if class_name in IMAGE_CLASS_LIST or (class_name == "text" and is_text_2d):
             is_table = class_name in ["table", "text"]
@@ -222,19 +225,24 @@ def render_blocks(
             )
             block_text = fix_unicode_encoding(block_text).rstrip()
             if page_img is not None:
-                block_img_base64 = crop_img_and_export_base64(
-                    page_img,
-                    block["bbox"],
+                img_content = (
+                    crop_img_and_export_bytes(page_img, block["bbox"])
+                    if export_raw_img
+                    else crop_img_and_export_base64(page_img, block["bbox"])
                 )
-                block_img_elem = f'<img src="{block_img_base64}" />'
-                block_text = (
-                    "{}" "<details><summary>({} image)</summary>" "{}</details>"
-                ).format(
-                    f"```\n{block_text}\n```\n\n" if block_text else "",
-                    class_name,
-                    block_img_elem,
-                )
-            else:
+                # block_img_base64 = crop_img_and_export_base64(
+                #     page_img,
+                #     block["bbox"],
+                # )
+                # block_img_elem = f'<img src="{block_img_base64}" />'
+                # block_text = (
+                #     "{}" "<details><summary>({} image)</summary>" "{}</details>"
+                # ).format(
+                #     f"```\n{block_text}\n```\n\n" if block_text else "",
+                #     class_name,
+                #     block_img_elem,
+                # )
+            if block_text:
                 block_text = f"```{class_name}\n{block_text}\n```"
         else:
             block_text = "".join([span["text"] for span in block_spans])
@@ -249,6 +257,7 @@ def render_blocks(
             page_blocks.append(
                 {
                     "text": block_text,
+                    "image": img_content,
                     "bbox": block["bbox"],
                     "type": LAYOUT_CLASS_TO_BLOCK_TYPE[class_name],
                     "lines": [
