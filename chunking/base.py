@@ -791,6 +791,17 @@ class Chunk:
 
         return ch
 
+    def clone_without_relations(self) -> "Chunk":
+        return Chunk(
+            mimetype=self.mimetype,
+            ctype=self.ctype,
+            content=self.content,
+            text=self.text,
+            summary=self.summary,
+            origin=self.origin,
+            metadata=self.metadata,
+        )
+
 
 class ChunkGroup:
     """An interface for a group of related chunk"""
