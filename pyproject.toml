@@ -16,7 +16,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Development Status :: 2 - Pre-Alpha"
 ]
-dependencies = ["llm"]
+dependencies = ["llm", "click"]
 
 [project.optional-dependencies]
 dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine", "papermill"]
@@ -24,6 +24,9 @@ dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "
 [project.urls]
 Homepage = "https://github.com/chunking-ai/chunking"
 Repository = "https://github.com/chunking-ai/chunking"
+
+[project.scripts]
+chunking = "chunking.cli:chunking"
 
 [tool.setuptools.packages.find]
 include = ["chunking", "chunking.*"]
