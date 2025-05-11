@@ -63,7 +63,7 @@ def _build_toc_tree(
             header_ids_in_response.add(header_id)
             # find the header with the id
             headers_level[header_id] = level
-            logger.deubg("#" * level + " " + headers[header_id].content)
+            logger.debug("#" * level + " " + headers[header_id].content)
 
     # find parent_id for each header
     # based on the reading order
