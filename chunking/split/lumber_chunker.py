@@ -1,3 +1,4 @@
+import logging
 from bisect import bisect_left
 from typing import Callable, List, Optional
 
@@ -8,6 +9,8 @@ from chunking.mime import MimeType
 from chunking.models import completion, parse_json_from_text
 from chunking.split.split import _non_whitespace_separators, split_text
 from chunking.split.utils import word_len
+
+logger = logging.getLogger(__name__)
 
 PROMPT_TEMPLATE = """<task> You are given a set of texts between the starting tag <passages> and ending tag </passages>. Each text is labeled as 'ID `N`' where 'N' is the passage number. Your task is to find the first passage where the content clearly separates from the previous passages in topic and/or semantics. </task>
 
@@ -113,7 +116,7 @@ class LumberChunker(BaseOperation):
                 )
                 if len(splits) <= 1:
                     # If the split is too small, just return the original chunk
-                    split_chunks.append(child_chunk.clone_without_relations())
+                    split_chunks.append(child_chunk.clone(no_relation=True))
                     continue
 
                 num_splits = len(splits)
@@ -146,6 +149,8 @@ class LumberChunker(BaseOperation):
                             model=model,
                             schema=SPLIT_SCHEMA,
                         )
+                        logger.debug(f"LumberChunker prompt: {prompt}")
+                        logger.debug(f"LumberChunker response: {response}")
                         decoded_dict = parse_json_from_text(response)
                         if decoded_dict is None:
                             split_index = group_end_index
@@ -175,7 +180,7 @@ class LumberChunker(BaseOperation):
                     ]
                     current_index = split_index
 
-            new_root = root.clone_without_relations()
+            new_root = root.clone(no_relation=True)
             new_root.add_children(split_chunks)
             output.append(new_root)
 

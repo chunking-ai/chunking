@@ -774,8 +774,19 @@ class Chunk:
 
         return result
 
-    def clone(self, **kwargs) -> "Chunk":
+    def clone(self, no_relation: bool = False, **kwargs) -> "Chunk":
         """Create a deepcopy, replace infor with what supplied inside **kwargs"""
+        if no_relation:
+            return Chunk(
+                mimetype=self.mimetype,
+                ctype=self.ctype,
+                content=self.content,
+                text=self.text,
+                summary=self.summary,
+                origin=self.origin,
+                metadata=self.metadata,
+            )
+
         d = self.asdict(relation_as_chunk=True)
         for key in kwargs.keys():
             if key not in d:
@@ -790,17 +801,6 @@ class Chunk:
             ch.store = self.store
 
         return ch
-
-    def clone_without_relations(self) -> "Chunk":
-        return Chunk(
-            mimetype=self.mimetype,
-            ctype=self.ctype,
-            content=self.content,
-            text=self.text,
-            summary=self.summary,
-            origin=self.origin,
-            metadata=self.metadata,
-        )
 
 
 class ChunkGroup:

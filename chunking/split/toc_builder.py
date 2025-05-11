@@ -1,9 +1,12 @@
+import logging
 import re
 from collections import defaultdict
 from typing import List
 
 from chunking.base import BaseOperation, Chunk, ChunkGroup, CType
 from chunking.models import completion
+
+logger = logging.getLogger(__name__)
 
 PROMPT_TEMPLATE = """<task> You are given a set of headers from a document between the starting tag <passages> and ending tag </passages>. Each header is labeled as 'ID `N`' where 'N' is the header number. Your task is to organize the header to markdown tree with (#, ##) tag to represent the correct structure of the table of contents. Some header is not correctly detected and should be removed. </task>
 
@@ -35,7 +38,8 @@ def _add_id_to_headers(headers: List[str]) -> List[str]:
 
 
 def _build_toc_tree(
-    headers: List[Chunk], model: str | None, verbose: bool = False
+    headers: List[Chunk],
+    model: str | None,
 ) -> List[Chunk]:
     """Build the table of contents tree from the headers."""
     headers_text_with_id = _add_id_to_headers(headers)
@@ -44,8 +48,7 @@ def _build_toc_tree(
         PROMPT_TEMPLATE.format(passages=headers_text),
         model=model,
     )
-    if verbose:
-        print("Response:", response)
+    logger.debug(f"Response: {response}")
     # parse the response
     id_pattern = r"ID `(\d+)`"
     headers_level = {}
@@ -60,8 +63,7 @@ def _build_toc_tree(
             header_ids_in_response.add(header_id)
             # find the header with the id
             headers_level[header_id] = level
-            if verbose:
-                print("#" * level + " " + headers[header_id].content)
+            logger.deubg("#" * level + " " + headers[header_id].content)
 
     # find parent_id for each header
     # based on the reading order
@@ -120,7 +122,7 @@ class TOCBuilder(BaseOperation):
                 )
 
             for _, child_chunk in root.walk():
-                new_child_chunk = child_chunk.clone_without_relations()
+                new_child_chunk = child_chunk.clone(no_relation=True)
 
                 if new_child_chunk.ctype == CType.Root:
                     continue
@@ -154,30 +156,34 @@ class TOCBuilder(BaseOperation):
                 parent_to_child_mapping[cur_header_id].extend(cur_header_children)
 
             # get root headers and add them to the root children
-            header_child_indices = set()
-            for header_id, child_header_ids in child_header_indices.items():
-                header_child_indices.update(child_header_ids)
-            root_header_indices = sorted(
-                set(range(len(all_headers)))
-                - set(to_remove_header_ids)
-                - set(header_child_indices)
-            )
+            if use_llm:
+                header_child_indices = set()
+                for header_id, child_header_ids in child_header_indices.items():
+                    header_child_indices.update(child_header_ids)
+                root_header_indices = sorted(
+                    set(range(len(all_headers)))
+                    - set(to_remove_header_ids)
+                    - set(header_child_indices)
+                )
+            else:
+                root_header_indices = range(len(all_headers))
             root_headers = [all_headers[i] for i in root_header_indices]
             cur_root_children.extend(root_headers)
 
-            # update the child headers from child_header_indices
-            for header_id, child_header_ids in child_header_indices.items():
-                # remove the header from the mapping
-                parent_to_child_mapping[header_id].extend(
-                    [all_headers[i] for i in child_header_ids]
-                )
+            if use_llm:
+                # update the child headers from child_header_indices
+                for header_id, child_header_ids in child_header_indices.items():
+                    # remove the header from the mapping
+                    parent_to_child_mapping[header_id].extend(
+                        [all_headers[i] for i in child_header_ids]
+                    )
 
             # set the children
             for header_id, child_chunks in parent_to_child_mapping.items():
                 all_headers[header_id].add_children(child_chunks)
 
             # remove children from root
-            new_root = root.clone_without_relations()
+            new_root = root.clone(no_relation=True)
             new_root.add_children(cur_root_children)
             output.append(new_root)
 
