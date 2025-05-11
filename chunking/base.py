@@ -776,21 +776,17 @@ class Chunk:
 
     def clone(self, no_relation: bool = False, **kwargs) -> "Chunk":
         """Create a deepcopy, replace infor with what supplied inside **kwargs"""
-        if no_relation:
-            return Chunk(
-                mimetype=self.mimetype,
-                ctype=self.ctype,
-                content=self.content,
-                text=self.text,
-                summary=self.summary,
-                origin=self.origin,
-                metadata=self.metadata,
-            )
 
         d = self.asdict(relation_as_chunk=True)
         for key in kwargs.keys():
             if key not in d:
                 raise ValueError(f"Invalid key: {key}")
+
+        if no_relation:
+            d.pop("parent")
+            d.pop("child")
+            d.pop("next")
+            d.pop("prev")
 
         d.pop("id")
         d = deepcopy(d)
