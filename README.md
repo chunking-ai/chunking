@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash
-pip install ...
+pip install chunking-ai
 ```
 
 Install the following system dependencies for the chunking library:

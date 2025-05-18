@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 version = "0.0.1"
-name = "chunking"
+name = "chunking-ai"
 authors = [
   { name = "trducng", email = "trungduc1992@gmail.com" },
   { name = "tadashi", email = "taprosoft@gmail.com" },
