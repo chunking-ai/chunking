@@ -12,7 +12,7 @@ from chunking.base import CType
 from chunking.controller import Controller
 from chunking.parser import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
 from chunking.parser.fastpdf.util import OCRMode, bytes_to_base64
-from chunking.split.toc_builder import TOCBuilder
+from chunking.split.toc_builder import TOCHierarchyBuilder
 from chunking.util.plot import plot_img, plot_pdf
 
 MAX_PAGES = os.getenv("MAX_PAGES", 10)
@@ -220,7 +220,7 @@ def convert_document(
         toc_text = (
             "<details open='true'><summary><big>Table-of-Content</big></summary>\n\n"
         )
-        new_chunks = TOCBuilder.run(
+        new_chunks = TOCHierarchyBuilder.run(
             chunks,
             use_llm=True,
             model=MODEL_NAME,
@@ -229,17 +229,17 @@ def convert_document(
             if chunk.ctype != CType.Header:
                 continue
 
-            chunk_page = chunk.origin["location"]["page"]
-            chunk_bbox = chunk.origin["location"]["bbox"]
+            chunk_page = chunk.origin.location["page"]
+            chunk_bbox = chunk.origin.location["bbox"]
             chunk_text = (
-                "<h4>" + "".join(["&nbsp;&nbsp;&nbsp;"] * level) + chunk.content
+                "<h5>" + "".join(["&nbsp;&nbsp;&nbsp;"] * level) + chunk.content
             )
             ref_link = (
                 f" <a class='chunk-ref' id='{chunk_page}-{chunk_bbox}'>[↗]</a>"
                 if add_reference_links
                 else ""
             )
-            chunk_text += ref_link + "</h4>"
+            chunk_text += ref_link + "</h5>"
             toc_text += chunk_text + "\n\n"
 
         toc_text += "</details>\n\n---\n\n"
